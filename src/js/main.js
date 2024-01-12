@@ -134,3 +134,4 @@ function smoothScroll() {
     behavior: 'smooth',
   });
 }
+
