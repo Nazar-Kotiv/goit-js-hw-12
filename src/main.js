@@ -18,47 +18,83 @@ const apiKey = "41495993-e4e29dd1119c53de35b82b765";
     searchForm.addEventListener("submit", handleSearch);
     loadMoreBtn.addEventListener('click', loadMore);
 
-    function handleSearch(event) {
-      event.preventDefault();
-      const searchTerm = searchInput.value.trim();
-      if (searchTerm === "") {
-        return;
+
+function handleSearch(event) {
+  event.preventDefault();
+  const searchTerm = searchInput.value.trim();
+  if (searchTerm === "") {
+    return;
+  }
+
+  currentSearchTerm = searchTerm;
+  currentPage = 1;
+  clearGallery();
+  showLoader();
+
+  fetchImages(currentSearchTerm, currentPage)
+    .then((data) => {
+      if (data.hits.length === 0) {
+        showError("No images found for your search. Please try again!");
+      } else {
+        renderGallery(data.hits);
+        initLightbox();
+        showLoadMoreButton();
       }
+    })
+    .catch((error) => handleError(error))
+    .finally(() => hideLoader());
+}
 
-      currentSearchTerm = searchTerm;
-      currentPage = 1;
-      clearGallery();
-      showLoader();
+function loadMore() {
+  if (currentPage === 1) {
+  hideLoader();
+    loadMoreBtn.style.display = 'none';
+  } else {
+    showLoader();
+  }
+ currentPage++;
+  fetchImages(currentSearchTerm, currentPage)
+    .then((data) => {
+      if (data.hits.length > 0) {
+        renderGallery(data.hits);
+        smoothScroll();
+      } else {
+        loadMoreBtn.style.display = 'none';
+        showError("No more images available for your search.");
+      }
+    })
+    .catch((error) => handleError(error))
+    .finally(() => hideLoader());
+}
 
-      fetchImages(currentSearchTerm, currentPage)
-        .then((data) => {
-          if (data.hits.length === 0) {
-            showError("No images found for your search. Please try again!");
-          } else {
-            renderGallery(data.hits);
-            initLightbox();
-            showLoadMoreButton();
-          }
-        })
-        .catch((error) => {
-          showError("Error fetching images. Please try again later.");
-          console.error("Error fetching images:", error);
-        })
-        .finally(() => {
-          hideLoader();
-        });
-    }
+function handleError(error) {
+  showError(`Error: ${error.message}`);
+  console.error("Error:", error);
+}
+
+function smoothScroll() {
+  const galleryItem = document.querySelector('.gallery-item');
+  if (galleryItem) {
+    const cardHeight = galleryItem.getBoundingClientRect().height;
+
+    window.scrollBy({
+      top: cardHeight * 2,
+      behavior: 'smooth',
+    });
+  }
+}
+
 
     async function fetchImages(query, page = 1) {
-      const perPage = 40;
-      const url = `https://pixabay.com/api/?key=${apiKey}&q=${query}&image_type=photo&orientation=horizontal&safesearch=true&page=${page}&per_page=${perPage}`;
-      try {
-        const response = await axios.get(url);
-        return response.data;
-      } catch (error) {
-        throw error;
-      }
-    }
+  const perPage = 40;
+  const url = `https://pixabay.com/api/?key=${apiKey}&q=${query}&image_type=photo&orientation=horizontal&safesearch=true&page=${page}&per_page=${perPage}`;
+  try {
+    const response = await axios.get(url);
+    return response.data;
+  } catch (error) {
+    throw new Error(`Error fetching images: ${error.message}`);
+  }
+}
 
     function renderGallery(images) {
       const galleryHTML = images
@@ -107,38 +143,4 @@ const apiKey = "41495993-e4e29dd1119c53de35b82b765";
 
     function showLoadMoreButton() {
       loadMoreBtn.style.display = 'block';
-    }
-
-    async function loadMore() {
-      showLoader();
-      currentPage++;
-
-      try {
-        const data = await fetchImages(currentSearchTerm, currentPage);
-
-        if (data.hits.length > 0) {
-          renderGallery(data.hits);
-          smoothScroll();
-        } else {
-          hideLoader();
-          loadMoreBtn.style.display = 'none';
-          showError("No more images available for your search.");
-        }
-      } catch (error) {
-        hideLoader();
-        showError("Error fetching additional images. Please try again later.");
-        console.error("Error fetching images:", error);
-      }
-      finally {
-        hideLoader();
-      }
-    }
-
-    function smoothScroll() {
-      const cardHeight = document.querySelector('.gallery-item').getBoundingClientRect().height;
-
-      window.scrollBy({
-        top: cardHeight * 2,
-        behavior: 'smooth',
-      });
     }
